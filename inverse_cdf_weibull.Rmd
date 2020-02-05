@@ -1,0 +1,92 @@
+---
+title: "Weibull"
+output:
+  html_notebook: default
+  html_document:
+    df_print: paged
+  pdf_document: default
+  word_document: default
+editor_options: 
+  chunk_output_type: inline
+---
+
+## (Old, from 10/10/2019) Conditional Survival 
+
+This Weibull parameterization has pdf $$f(t| \lambda, \nu) = \nu \lambda t^{\nu - 1} exp(-\lambda t^{\nu}),$$
+and survival function
+$$S(t) =  exp(-\lambda t^\nu).$$
+
+Use the properties 
+$$\Lambda(t) = \int_{0}^{t} \lambda(t)$$
+and 
+$$S(t) = exp(-\Lambda(t)),$$
+where $\lambda(t)$ is the hazard function at time $t$, $\Lambda(t)$ is the cumulative hazard function, and $S(t)$ is the survival function. Then 
+
+$$S(t|t_0) = exp\{-\int_{t_0}^{t + t_0} \lambda(x)dx\} = exp\{-\int_{0}^{t + t_0} \lambda(x)dx -\int_{0}^{t_0} \lambda(x)dx \}  = \frac{S(t + t_0)}{S(t_0)}$$ 
+
+Plug in the weibull survival functions: 
+$$ S(t|t_0) = \frac{S(t + t_0)}{S(t_0)} = \frac{exp(\lambda (t + t_0)^\nu)}{exp(\lambda t_0^\nu)}  =  exp[ \lambda \{ (t + t_0)^\nu - t_0^\nu\}]$$
+
+Then the conditional CDF is $$F(t|t_0) = 1 - S(t|t_0) = 1 - exp[ \lambda \{ (t + t_0)^\nu - t_0^\nu\}]$$
+
+Invert to get the quantile function. After a lot of algebra this expression $u = 1 - exp[ \lambda^\nu \{ (t + t_0)^\nu - t_0^\nu\}]$ becomes 
+$$F^{-1}(u) = \{{t_0}^\nu - \lambda^{-1}log(1-u) \}^{1/\nu} - t_0$$
+
+R function:
+
+```{r}
+f_inv_cond_weib = function(u, nu, lambda, t0){
+  
+  t = (t0^nu - log(1-u) * lambda^(-1))^(1/nu) - t0
+  
+  return(t)
+  
+}
+```
+
+
+## Odds Adjusted Conditional Survival
+
+Under a  proportional hazards assumption we have
+
+$$S_1(t) = S_0(t)^\beta, $$
+
+where $S_0(\cdot)$ is the survival function in the reference group, $S_1(\cdot)$ is the survival function in the treatment group, and $\beta$ is the hazard ratio.
+
+Plug in $S_1(t)$ into the expression for the conditional survival function above to get
+
+$$S_1(t | t_0) = \bigg[ \frac{S_0(t + t_0)}{S_0(t_0)} \bigg]^\beta = exp[ \lambda \{ (t + t_0)^\nu - t_0^\nu\}]^\beta = exp[ \beta \lambda \{ (t + t_0)^\nu - t_0^\nu\}]$$
+
+Then the conditional survival function is 
+
+$$F(t|t_0) = 1 -  exp[ \beta \lambda \{ (t + t_0)^\nu - t_0^\nu\}].$$
+
+Inverting this gets
+
+$$Q(u | t_0) = \{{t_0}^\nu - (\lambda \beta)^{-1} log(1-u) \}^{1/\nu} - t_0.$$
+
+
+R function:
+
+```{r}
+# The hazard ratio is set to 1 by default so the function can be used for 
+# non hazard adjusted inverse CDF's
+inverse_cond_cdf = function(u, nu, lambda, beta_HR = 1, t0){
+  
+  t = (t0^nu - log(1 - u) * (beta_HR * lambda)^(-1) )^(1/nu) - t0
+  
+  return(t)
+  
+}
+
+
+curve(inverse_cond_cdf(x, nu = 1, lambda = 0.5, 
+                       beta_HR = 2, t0 = 1),
+      from = 0, 
+      to = 1,
+      xlab = "Quantile",
+      y = "",
+      main = "Inverse CDF for Weibull Model Adjusted for Hazard Ratio",
+      lwd = 3
+)
+```
